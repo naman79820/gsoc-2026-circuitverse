@@ -1,30 +1,14 @@
 <template>
   <div v-if="isDebugMode && !embed" class="watch-panel">
-    <div class="panel-header">
-      <h3>👁️ Watch Panel</h3>
-      <button @click="clearAll" class="btn-clear" :disabled="watches.length === 0">
-        Clear All
-      </button>
+    <div class="wp-header">
+      <b>Watch Panel</b>
+      <button @click="watches = []" :disabled="!watches.length" class="btn-sm">Clear</button>
     </div>
-
-    <div v-if="watches.length === 0" class="empty-state">
-      Click on wires or components to watch their values
-    </div>
-
-    <div v-else class="watch-list">
-      <div 
-        v-for="watch in watches" 
-        :key="watch.id"
-        class="watch-item"
-        :class="{ changed: watch.changed }"
-      >
-        <div class="watch-name">{{ watch.name }}</div>
-        <div class="watch-value">
-          <span class="value-decimal">{{ watch.value }}</span>
-          <span class="value-binary">(0b{{ toBinary(watch.value) }})</span>
-        </div>
-        <button @click="removeWatch(watch.id)" class="btn-remove">×</button>
-      </div>
+    <div v-if="!watches.length" class="wp-empty">Click on nodes to watch values</div>
+    <div v-for="w in watches" :key="w.id" class="wp-item" :class="{ flash: w.changed }">
+      <span class="wp-name">{{ w.name }}</span>
+      <span class="wp-val">{{ w.value }}</span>
+      <button @click="watches = watches.filter(x => x.id !== w.id)" class="btn-x">&times;</button>
     </div>
   </div>
 </template>
@@ -32,117 +16,49 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-// Engine functions
-let debugModeGet: () => boolean
-let getStateHistory: () => any
+let debugModeGet: any, getStateHistory: any
 
-const loadEngineFunctions = async () => {
+const loadFns = async () => {
   try {
-    const engine = await import('../simulator/src/engine')
-    debugModeGet = engine.debugModeGet
-    getStateHistory = engine.getStateHistory
-  } catch (error) {
-    console.error('Failed to load engine functions:', error)
-  }
-}
-
-interface Watch {
-  id: string
-  name: string
-  value: number
-  previousValue: number
-  changed: boolean
-  nodeIndex: number
+    const e = await import('../simulator/src/engine')
+    debugModeGet = e.debugModeGet; getStateHistory = e.getStateHistory
+  } catch (_) {}
 }
 
 const isDebugMode = ref(false)
-const watches = ref<Watch[]>([])
-
+const watches = ref<any[]>([])
 // @ts-ignore
 const embed = typeof window !== 'undefined' ? window.embed || false : false
 
-function addWatch(item: { id: string, name: string, value: number, nodeIndex: number }) {
-  // Check if already watching
+function addWatch(item: any) {
   if (watches.value.find(w => w.id === item.id)) return
+  watches.value.push({ ...item, previousValue: item.value, changed: false })
+}
 
-  watches.value.push({
-    id: item.id,
-    name: item.name,
-    value: item.value,
-    previousValue: item.value,
-    changed: false,
-    nodeIndex: item.nodeIndex
+function tick() {
+  if (debugModeGet) isDebugMode.value = debugModeGet()
+  if (!isDebugMode.value || !getStateHistory) return
+  const h = getStateHistory()
+  const cur = h.states[h.currentIndex]
+  if (!cur?.nodes) return
+  watches.value.forEach(w => {
+    const n = cur.nodes[w.nodeIndex]
+    if (!n) return
+    w.changed = w.value !== n.value
+    w.value = n.value
+    if (w.changed) setTimeout(() => { w.changed = false }, 400)
   })
 }
 
-function updateWatches() {
-  if (!debugModeGet || !getStateHistory) return
-  
-  isDebugMode.value = debugModeGet()
-  
-  if (!isDebugMode.value) return
-
-  const history = getStateHistory()
-  const currentState = history.states[history.currentIndex]
-  
-  if (!currentState || !currentState.nodes) return
-
-  watches.value.forEach(watch => {
-    const node = currentState.nodes[watch.nodeIndex]
-    if (node) {
-      const newValue = node.value
-      watch.changed = watch.value !== newValue
-      watch.previousValue = watch.value
-      watch.value = newValue
-
-      // Clear changed indicator after animation
-      if (watch.changed) {
-        setTimeout(() => {
-          watch.changed = false
-        }, 500)
-      }
-    }
-  })
-}
-
-function removeWatch(id: string) {
-  watches.value = watches.value.filter(w => w.id !== id)
-}
-
-function clearAll() {
-  watches.value = []
-}
-
-function toBinary(value: number): string {
-  if (value === undefined || value === null) return '?'
-  return value.toString(2).padStart(8, '0')
-}
-
-let updateInterval: NodeJS.Timeout | null = null
-
-// Expose addWatch function globally so canvas can call it
+let timer: any = null
 onMounted(async () => {
-  await loadEngineFunctions()
-  
-  // Make addWatch available globally
-  if (typeof window !== 'undefined') {
-    // @ts-ignore
-    window.addToWatchPanel = addWatch
-  }
-
-  updateInterval = setInterval(updateWatches, 100)
+  await loadFns()
+  if (typeof window !== 'undefined') (window as any).addToWatchPanel = addWatch
+  timer = setInterval(tick, 100)
 })
-
 onUnmounted(() => {
-  if (updateInterval) {
-    clearInterval(updateInterval)
-  }
-  
-  // Cleanup global function
-  if (typeof window !== 'undefined') {
-    // @ts-ignore
-    delete window.addToWatchPanel
-  }
+  if (timer) clearInterval(timer)
+  if (typeof window !== 'undefined') delete (window as any).addToWatchPanel
 })
 </script>
 
@@ -151,143 +67,69 @@ onUnmounted(() => {
   position: fixed;
   right: 20px;
   top: 420px;
-  width: 320px;
-  max-height: 350px;
-  background: white;
-  border: 2px solid #17a2b8;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  width: 280px;
+  background: #fff;
+  border: 1px solid #17a2b8;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  display: flex;
-  flex-direction: column;
+  font-size: 13px;
 }
 
-.panel-header {
+.wp-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 2px solid #e9ecef;
-  background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
 }
 
-.panel-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #17a2b8;
-}
-
-.btn-clear {
-  padding: 5px 10px;
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.btn-clear:hover:not(:disabled) {
-  background: #c82333;
-}
-
-.btn-clear:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.empty-state {
-  padding: 40px 20px;
+.wp-empty {
+  padding: 20px;
   text-align: center;
-  color: #6c757d;
-  font-size: 13px;
-  line-height: 1.6;
+  color: #999;
 }
 
-.watch-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-}
-
-.watch-item {
+.wp-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  background: white;
-  transition: all 0.3s;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.watch-item:hover {
-  border-color: #17a2b8;
-  box-shadow: 0 2px 4px rgba(23,162,184,0.1);
-}
-
-.watch-item.changed {
+.wp-item.flash {
   background: #fff3cd;
-  border-color: #ffc107;
-  animation: highlight 0.5s;
 }
 
-@keyframes highlight {
-  0% { 
-    background: #ffc107;
-    transform: scale(1.02);
-  }
-  100% { 
-    background: #fff3cd;
-    transform: scale(1);
-  }
-}
-
-.watch-name {
+.wp-name {
   flex: 1;
-  font-weight: 600;
-  font-size: 13px;
-  color: #212529;
   font-family: monospace;
 }
 
-.watch-value {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-family: monospace;
-  font-size: 12px;
-}
-
-.value-decimal {
-  font-size: 14px;
+.wp-val {
   font-weight: 700;
   color: #007bff;
+  font-family: monospace;
 }
 
-.value-binary {
-  font-size: 10px;
-  color: #6c757d;
+.btn-sm {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+  background: #fff;
 }
 
-.btn-remove {
-  width: 22px;
-  height: 22px;
+.btn-x {
   border: none;
   background: #dc3545;
-  color: white;
+  color: #fff;
   border-radius: 50%;
+  width: 18px;
+  height: 18px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
-  font-weight: bold;
-  flex-shrink: 0;
-}
-
-.btn-remove:hover {
-  background: #c82333;
-  transform: scale(1.1);
 }
 </style>

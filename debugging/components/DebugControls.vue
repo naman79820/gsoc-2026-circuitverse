@@ -2,17 +2,17 @@
   <div v-if="!embed" class="debug-controls">
     <div class="debug-toolbar">
       <button @click="toggleDebugMode" :class="{ active: isDebugMode }" class="debug-btn">
-        <span v-if="!isDebugMode">🐛 Enable Debug Mode</span>
-        <span v-else>❌ Exit Debug</span>
+        <span v-if="!isDebugMode">Enable Debug Mode</span>
+        <span v-else>Exit Debug</span>
       </button>
       
       <div v-if="isDebugMode" class="debug-buttons">
         <button @click="handleStepBack" :disabled="!canStepBack" class="step-btn">
-          ⬅️ Step Back
+          &larr; Step Back
         </button>
         
         <button @click="handleStepForward" class="step-btn">
-          Step Forward ➡️
+          Step Forward &rarr;
         </button>
         
         <div class="state-counter">
@@ -26,19 +26,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-// Define emit
 const emit = defineEmits<{
   'debug-mode-changed': [enabled: boolean]
 }>()
 
-// Import debug functions from engine
 let debugModeSet: (param: boolean) => void
 let debugModeGet: () => boolean
 let stepBack: () => void
 let stepForward: () => void
 let getStateHistory: () => any
 
-// Dynamically import to avoid errors if functions don't exist yet
 const loadEngineFunctions = async () => {
   try {
     const engine = await import('../simulator/src/engine')
@@ -75,15 +72,11 @@ function toggleDebugMode() {
   
   isDebugMode.value = !isDebugMode.value
   debugModeSet(isDebugMode.value)
-  
-  // Emit the debug mode change event
   emit('debug-mode-changed', isDebugMode.value)
-  
+
   if (isDebugMode.value) {
-    // Start polling for state updates
     updateInterval = setInterval(refreshStateInfo, 100)
   } else {
-    // Stop polling
     if (updateInterval) {
       clearInterval(updateInterval)
       updateInterval = null
@@ -116,12 +109,10 @@ function refreshStateInfo() {
 onMounted(async () => {
   await loadEngineFunctions()
   
-  // Check if debug mode was already enabled
   if (debugModeGet) {
     isDebugMode.value = debugModeGet()
     if (isDebugMode.value) {
       updateInterval = setInterval(refreshStateInfo, 100)
-      // Emit initial state
       emit('debug-mode-changed', true)
     }
   }

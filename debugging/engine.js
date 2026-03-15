@@ -18,243 +18,50 @@ import { stateHistory } from '../debug/StateHistory'
 import { breakpointManager } from '../debug/BreakpointManager'
 import { signalVisualizer } from '../debug/SignalVisualizer'
 
-/**
- * Core of the simulation and rendering algorithm.
- */
-
-/**
- * @type {number} engine
- * @category engine
- */
+// original engine state flags
 var wireToBeChecked = 0
+export function wireToBeCheckedSet(param) { wireToBeChecked = param }
 
-/**
- * Used to set wireChecked boolean which updates wires in UI if true (or 1). 2 if some problem and it is handled.
- * @param {number} param - value of wirechecked
- * @category engine
- */
-export function wireToBeCheckedSet(param) {
-    wireToBeChecked = param
-}
-
-/**
- * scheduleUpdate() will be called if true
- * @type {boolean}
- * @category engine
- */
 var willBeUpdated = false
+export function willBeUpdatedSet(param) { willBeUpdated = param }
 
-/**
- * used to set willBeUpdated variable
- * @type {boolean}
- * @category engine
- * @category engine
- */
-export function willBeUpdatedSet(param) {
-    willBeUpdated = param
-}
-
-/**
- * true if we have an element selected and
- * is used when we are paning the grid.
- * @type {boolean}
- * @category engine
- */
 var objectSelection = false
+export function objectSelectionSet(param) { objectSelection = param }
 
-/**
- * used to set the value of object selection,
- * @param {boolean} param
- * @category engine
- */
-export function objectSelectionSet(param) {
-    objectSelection = param
-}
-
-/**
- * Flag for updating position
- * @type {boolean}
- * @category engine
- */
 var updatePosition = true
+export function updatePositionSet(param) { updatePosition = param }
 
-/**
- * used to set the value of updatePosition.
- * @param {boolean} param
- * @category engine
- */
-export function updatePositionSet(param) {
-    updatePosition = param
-}
-
-/**
- * Flag for updating simulation
- * @type {boolean}
- * @category engine
- */
 var updateSimulation = true
+export function updateSimulationSet(param) { updateSimulation = param }
 
-/**
- * used to set the value of updateSimulation.
- * @param {boolean} param
- * @category engine
- */
-export function updateSimulationSet(param) {
-    updateSimulation = param
-}
-/**
- * Flag for rendering
- * @type {boolean}
- * @category engine
- */
 var updateCanvas = true
+export function updateCanvasSet(param) { updateCanvas = param }
 
-/**
- * used to set the value of updateCanvas.
- * @param {boolean} param
- * @category engine
- */
-export function updateCanvasSet(param) {
-    updateCanvas = param
-}
-
-/**
- *  Flag for updating grid
- * @type {boolean}
- * @category engine
- */
 var gridUpdate = true
+export function gridUpdateSet(param) { gridUpdate = param }
+export function gridUpdateGet() { return gridUpdate }
 
-/**
- * used to set gridUpdate
- * @param {boolean} param
- * @category engine
- */
-export function gridUpdateSet(param) {
-    gridUpdate = param
-}
-
-/**
- * used to get gridUpdate
- * @return {boolean}
- * @category engine
- */
-export function gridUpdateGet() {
-    return gridUpdate
-}
-/**
- *  Flag for updating grid
- * @type {boolean}
- * @category engine
- */
 var forceResetNodes = true
+export function forceResetNodesSet(param) { forceResetNodes = param }
 
-/**
- * used to set forceResetNodes
- * @param {boolean} param
- * @category engine
- */
-export function forceResetNodesSet(param) {
-    forceResetNodes = param
-}
-/**
- *  Flag for updating grid
- * @type {boolean}
- * @category engine
- */
 var errorDetected = false
+export function errorDetectedSet(param) { errorDetected = param }
+export function errorDetectedGet() { return errorDetected }
 
-/**
- * used to set errorDetected
- * @param {boolean} param
- * @category engine
- */
-export function errorDetectedSet(param) {
-    errorDetected = param
-}
+export var canvasMessageData = { x: undefined, y: undefined, string: undefined }
 
-/**
- * used to set errorDetected
- * @returns {boolean} errorDetected
- * @category engine
- */
-export function errorDetectedGet() {
-    return errorDetected
-}
-
-/**
- * details of where and what canvas message has to be shown.
- * @type {Object}
- * @property {number} x - x cordinate of message
- * @property {number} y - x cordinate of message
- * @property {number} string - the message
- * @category engine
- */
-export var canvasMessageData = {
-    x: undefined,
-    y: undefined,
-    string: undefined,
-}
-
-/**
- * Flag for debug mode
- * @type {boolean}
- * @category engine
- */
+// debug mode stuff
 var debugMode = false
-
-/**
- * used to set the value of debugMode.
- * @param {boolean} param
- * @category engine
- */
-export function debugModeSet(param) {
-    debugMode = param
-    if (param) {
-        stateHistory.clear()
-        // Capture initial state
-        stateHistory.captureState(globalScope)
-    }
-}
-
-/**
- * used to get the value of debugMode.
- * @return {boolean}
- * @category engine
- */
-export function debugModeGet() {
-    return debugMode
-}
-
-/**
- * Flag to track if simulation is paused by breakpoint
- * @type {boolean}
- * @category engine
- */
 var pausedByBreakpoint = false
 
-/**
- * used to get if paused by breakpoint
- * @return {boolean}
- * @category engine
- */
-export function pausedByBreakpointGet() {
-    return pausedByBreakpoint
+export function debugModeSet(param) {
+    debugMode = param
+    if (param) { stateHistory.clear(); stateHistory.captureState(globalScope) }
 }
+export function debugModeGet() { return debugMode }
+export function pausedByBreakpointGet() { return pausedByBreakpoint }
+export function pausedByBreakpointSet(param) { pausedByBreakpoint = param }
 
-/**
- * used to set pausedByBreakpoint
- * @param {boolean} param
- * @category engine
- */
-export function pausedByBreakpointSet(param) {
-    pausedByBreakpoint = param
-}
-
-/**
- * Resume simulation after breakpoint
- * @category engine
- */
 export function resumeSimulation() {
     pausedByBreakpoint = false
     breakpointManager.clearTriggered()
@@ -262,425 +69,179 @@ export function resumeSimulation() {
     scheduleUpdate()
 }
 
-/**
- * Add a breakpoint
- * @param {Object} config - breakpoint configuration
- * @category engine
- */
-export function addBreakpoint(config) {
-    return breakpointManager.addBreakpoint(config)
-}
+// thin wrappers so the UI doesn't import the singletons directly
+export function addBreakpoint(config) { return breakpointManager.addBreakpoint(config) }
+export function removeBreakpoint(id) { breakpointManager.removeBreakpoint(id) }
+export function toggleBreakpoint(id) { breakpointManager.toggleBreakpoint(id) }
+export function getAllBreakpoints() { return breakpointManager.getAllBreakpoints() }
+export function getTriggeredBreakpoint() { return breakpointManager.getTriggeredBreakpoint() }
+export function enableSignalVisualization(speed = 300) { signalVisualizer.enable(speed) }
+export function disableSignalVisualization() { signalVisualizer.disable() }
+export function getSignalVisualizer() { return signalVisualizer }
 
-/**
- * Remove a breakpoint
- * @param {number} id - breakpoint ID
- * @category engine
- */
-export function removeBreakpoint(id) {
-    breakpointManager.removeBreakpoint(id)
-}
 
-/**
- * Toggle breakpoint enabled/disabled
- * @param {number} id - breakpoint ID
- * @category engine
- */
-export function toggleBreakpoint(id) {
-    breakpointManager.toggleBreakpoint(id)
-}
-
-/**
- * Get all breakpoints
- * @return {Array} array of breakpoints
- * @category engine
- */
-export function getAllBreakpoints() {
-    return breakpointManager.getAllBreakpoints()
-}
-
-/**
- * Get triggered breakpoint
- * @return {Object} triggered breakpoint or null
- * @category engine
- */
-export function getTriggeredBreakpoint() {
-    return breakpointManager.getTriggeredBreakpoint()
-}
-
-/**
- * Enable signal visualization
- * @param {number} speed - Animation speed in ms
- * @category engine
- */
-export function enableSignalVisualization(speed = 300) {
-    signalVisualizer.enable(speed)
-}
-
-/**
- * Disable signal visualization
- * @category engine
- */
-export function disableSignalVisualization() {
-    signalVisualizer.disable()
-}
-
-/**
- * Get signal visualizer instance
- * @category engine
- */
-export function getSignalVisualizer() {
-    return signalVisualizer
-}
-
-/**
- *  Flag for updating subCircuits
- * @type {boolean}
- * @category engine
- */
 var updateSubcircuit = true
-
-/**
- * used to set updateSubcircuit
- * @param {boolean} param
- * @category engine
- */
 export function updateSubcircuitSet(param) {
-    if (updateSubcircuit != param) {
-        updateSubcircuit = param
-        return true
-    }
+    if (updateSubcircuit != param) { updateSubcircuit = param; return true }
     updateSubcircuit = param
     return false
 }
 
-/**
- * turn light mode on
- * @param {boolean} val -- new value for light mode
- * @category engine
- */
 export function changeLightMode(val) {
     if (!val && lightMode) {
-        lightMode = false
-        DPR = window.devicePixelRatio || 1
-        globalScope.scale *= DPR
+        lightMode = false; DPR = window.devicePixelRatio || 1; globalScope.scale *= DPR
     } else if (val && !lightMode) {
-        lightMode = true
-        globalScope.scale /= DPR
-        DPR = 1
-        $('#miniMap').fadeOut('fast')
+        lightMode = true; globalScope.scale /= DPR; DPR = 1; $('#miniMap').fadeOut('fast')
     }
     resetup()
 }
 
-/**
- * Function to render Canvas according th renderupdate order
- * @param {Scope} scope - The circuit whose canvas we want to render
- * @category engine
- */
+// rendering
 export function renderCanvas(scope) {
-    if (layoutModeGet() || verilogModeGet()) {
-        // Different Algorithm
-        return
-    }
+    if (layoutModeGet() || verilogModeGet()) return
     var ctx = simulationArea.context
-    // Reset canvas
     simulationArea.clear()
-    // Update Grid
-    if (gridUpdate) {
-        gridUpdateSet(false)
-        dots()
-    }
-    canvasMessageData = {
-        x: undefined,
-        y: undefined,
-        string: undefined,
-    } //  Globally set in draw fn ()
-    
-    // Render objects
+    if (gridUpdate) { gridUpdateSet(false); dots() }
+    canvasMessageData = { x: undefined, y: undefined, string: undefined }
+
     for (let i = 0; i < renderOrder.length; i++) {
         for (var j = 0; j < scope[renderOrder[i]].length; j++) {
             scope[renderOrder[i]][j].draw()
         }
     }
-    
-    // Draw signal animations AFTER objects (so they appear on top)
-    if (debugMode) {
-        signalVisualizer.drawSignals(ctx, scope)
-    }
-    
-    // Show any message
+
+    // draw signal glow on top of everything
+    if (debugMode) signalVisualizer.drawSignals(ctx, scope)
+
     if (canvasMessageData.string !== undefined) {
-        canvasMessage(
-            ctx,
-            canvasMessageData.string,
-            canvasMessageData.x,
-            canvasMessageData.y
-        )
+        canvasMessage(ctx, canvasMessageData.string, canvasMessageData.x, canvasMessageData.y)
     }
-    // If multiple object selections are going on, show selected area
     if (objectSelection) {
-        ctx.beginPath()
-        ctx.lineWidth = 2
-        ctx.strokeStyle = 'black'
-        ctx.fillStyle = 'rgba(0,0,0,0.1)'
-        rect2(
-            ctx,
-            simulationArea.mouseDownX,
-            simulationArea.mouseDownY,
+        ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = 'black'; ctx.fillStyle = 'rgba(0,0,0,0.1)'
+        rect2(ctx, simulationArea.mouseDownX, simulationArea.mouseDownY,
             simulationArea.mouseX - simulationArea.mouseDownX,
-            simulationArea.mouseY - simulationArea.mouseDownY,
-            0,
-            0,
-            'RIGHT'
-        )
-        ctx.stroke()
-        ctx.fill()
+            simulationArea.mouseY - simulationArea.mouseDownY, 0, 0, 'RIGHT')
+        ctx.stroke(); ctx.fill()
     }
-    if (simulationArea.hover !== undefined) {
-        simulationArea.canvas.style.cursor = 'pointer'
-    } else if (simulationArea.mouseDown) {
-        simulationArea.canvas.style.cursor = 'grabbing'
-    } else {
-        simulationArea.canvas.style.cursor = 'default'
-    }
+    if (simulationArea.hover !== undefined) simulationArea.canvas.style.cursor = 'pointer'
+    else if (simulationArea.mouseDown) simulationArea.canvas.style.cursor = 'grabbing'
+    else simulationArea.canvas.style.cursor = 'default'
 }
 
-/**
- * Function to move multiple objects and panes window
- * deselected using dblclick right now (PR open for esc key)
- * @param {Scope=} scope - the circuit in which we are selecting stuff
- * @category engine
- */
 export function updateSelectionsAndPane(scope = globalScope) {
     if (!simulationArea.selected && simulationArea.mouseDown) {
         simulationArea.selected = true
         simulationArea.lastSelected = scope.root
         simulationArea.hover = scope.root
-        // Selecting multiple objects
-        if (simulationArea.shiftDown) {
-            objectSelectionSet(true)
-        } else if (!embed) {
-            findDimensions(scope)
-            miniMapArea.setup()
-            $('#miniMap').show()
-        }
-    } else if (
-        simulationArea.lastSelected === scope.root &&
-        simulationArea.mouseDown
-    ) {
-        // pane canvas to give an idea of grid moving
+        if (simulationArea.shiftDown) objectSelectionSet(true)
+        else if (!embed) { findDimensions(scope); miniMapArea.setup(); $('#miniMap').show() }
+    } else if (simulationArea.lastSelected === scope.root && simulationArea.mouseDown) {
         if (!objectSelection) {
-            globalScope.ox =
-                simulationArea.mouseRawX -
-                simulationArea.mouseDownRawX +
-                simulationArea.oldx
-            globalScope.oy =
-                simulationArea.mouseRawY -
-                simulationArea.mouseDownRawY +
-                simulationArea.oldy
-            globalScope.ox = Math.round(globalScope.ox)
-            globalScope.oy = Math.round(globalScope.oy)
+            globalScope.ox = Math.round(simulationArea.mouseRawX - simulationArea.mouseDownRawX + simulationArea.oldx)
+            globalScope.oy = Math.round(simulationArea.mouseRawY - simulationArea.mouseDownRawY + simulationArea.oldy)
             gridUpdateSet(true)
             if (!embed && !lightMode) miniMapArea.setup()
-        } else {
-            // idea: kind of empty
         }
     } else if (simulationArea.lastSelected === scope.root) {
-        /*
-        Select multiple objects by adding them to the array
-        simulationArea.multipleObjectSelections when we select
-        using shift + mouse movement to select an area but
-        not shift + click
-        */
-        simulationArea.lastSelected = undefined
-        simulationArea.selected = false
-        simulationArea.hover = undefined
+        simulationArea.lastSelected = undefined; simulationArea.selected = false; simulationArea.hover = undefined
         if (objectSelection) {
             objectSelectionSet(false)
-            var x1 = simulationArea.mouseDownX
-            var x2 = simulationArea.mouseX
-            var y1 = simulationArea.mouseDownY
-            var y2 = simulationArea.mouseY
-            // Sort those four points to make a selection pane
-            if (x1 > x2) {
-                const temp = x1
-                x1 = x2
-                x2 = temp
-            }
-            if (y1 > y2) {
-                const temp = y1
-                y1 = y2
-                y2 = temp
-            }
-            // Select the objects, push them into a list
+            var x1 = simulationArea.mouseDownX, x2 = simulationArea.mouseX
+            var y1 = simulationArea.mouseDownY, y2 = simulationArea.mouseY
+            if (x1 > x2) { const t = x1; x1 = x2; x2 = t }
+            if (y1 > y2) { const t = y1; y1 = y2; y2 = t }
             for (let i = 0; i < updateOrder.length; i++) {
                 for (var j = 0; j < scope[updateOrder[i]].length; j++) {
                     var obj = scope[updateOrder[i]][j]
-                    if (simulationArea.multipleObjectSelections.includes(obj))
-                        continue
-                    var x
-                    var y
-                    if (obj.objectType === 'Node') {
-                        x = obj.absX()
-                        y = obj.absY()
-                    } else if (obj.objectType !== 'Wire') {
-                        x = obj.x
-                        y = obj.y
-                    } else {
-                        continue
-                    }
-                    if (x > x1 && x < x2 && y > y1 && y < y2) {
-                        simulationArea.multipleObjectSelections.push(obj)
-                    }
+                    if (simulationArea.multipleObjectSelections.includes(obj)) continue
+                    var x, y
+                    if (obj.objectType === 'Node') { x = obj.absX(); y = obj.absY() }
+                    else if (obj.objectType !== 'Wire') { x = obj.x; y = obj.y }
+                    else continue
+                    if (x > x1 && x < x2 && y > y1 && y < y2) simulationArea.multipleObjectSelections.push(obj)
                 }
             }
         }
     }
 }
 
-/**
- * Main fn that resolves circuit using event driven simulation
- * All inputs are added to a scope using scope.addinput() and
- * the simulation starts to play.
- * @param {Scope=} scope - the circuit we want to simulate
- * @param {boolean} resetNodes - boolean to reset all nodes
- * @category engine
- */
+// simulation loop
 export function play(scope = globalScope, resetNodes = false) {
-    if (errorDetected) return // Don't simulate until error is fixed
-    if (loading === true) return // Don't simulate until loaded
-    
-    // Don't run if paused by breakpoint
-    if (pausedByBreakpoint) return
+    if (errorDetected || loading === true || pausedByBreakpoint) return
 
-    // Get previous state for change detection (breakpoints & signal visualization)
     const previousState = debugMode ? stateHistory.getCurrentState() : null
 
     simulationArea.simulationQueue.reset()
-    plotArea.setExecutionTime() // Waveform thing
-    resetNodeHighlights(scope);
-    // Reset Nodes if required
+    plotArea.setExecutionTime()
+    resetNodeHighlights(scope)
+
     if (resetNodes || forceResetNodes) {
-        scope.reset()
-        simulationArea.simulationQueue.reset()
-        forceResetNodesSet(false)
+        scope.reset(); simulationArea.simulationQueue.reset(); forceResetNodesSet(false)
     }
 
-    // To store set of Nodes that have shown contention but kept temporarily
-    simulationArea.contentionPending = new ContentionPendingData();
-    // add inputs to the simulation queue
+    simulationArea.contentionPending = new ContentionPendingData()
     scope.addInputs()
-    // to check if we have infinite loop in circuit
-    let stepCount = 0
-    let elem
+
+    let stepCount = 0, elem
     while (!simulationArea.simulationQueue.isEmpty()) {
-        if (errorDetected) {
-            simulationArea.simulationQueue.reset()
-            return
-        }
+        if (errorDetected) { simulationArea.simulationQueue.reset(); return }
         elem = simulationArea.simulationQueue.pop()
-
         elem.resolve()
-
         stepCount++
         if (stepCount > 1000000) {
-            // Cyclic or infinite Circuit Detection
-            showError(
-                'Simulation Stack limit exceeded: maybe due to cyclic paths or contention'
-            )
+            showError('Simulation Stack limit exceeded: maybe due to cyclic paths or contention')
             forceResetNodesSet(true)
         }
     }
-    // Check for Contentions
-    if (simulationArea.contentionPending.size() > 0) {
-        for (const [ourNode, theirNode] of simulationArea.contentionPending.nodes()) {
-            ourNode.highlighted = true;
-            theirNode.highlighted = true;
-        }
 
-        forceResetNodesSet(true);
-        showError('Contention Error: One or more bus contentions in the circuit (check highlighted nodes)');
+    if (simulationArea.contentionPending.size() > 0) {
+        for (const [a, b] of simulationArea.contentionPending.nodes()) { a.highlighted = true; b.highlighted = true }
+        forceResetNodesSet(true)
+        showError('Contention Error: One or more bus contentions in the circuit (check highlighted nodes)')
     }
-    
-    // Capture state if in debug mode (after simulation is complete)
+
+    // if debug mode is on, record state and check breakpoints
     if (debugMode && !errorDetected) {
         stateHistory.captureState(scope)
-        const currentState = stateHistory.getCurrentState()
-        
-        // Track signal changes for visualization
-        if (previousState && currentState) {
-            signalVisualizer.trackChanges(currentState, previousState)
-        }
-        
-        // Check breakpoints after state is captured
-        const triggered = breakpointManager.checkBreakpoints(scope, previousState)
-        if (triggered) {
+        const cur = stateHistory.getCurrentState()
+        if (previousState && cur) signalVisualizer.trackChanges(cur, previousState)
+
+        const hit = breakpointManager.checkBreakpoints(scope, previousState)
+        if (hit) {
             pausedByBreakpoint = true
-            updateSimulationSet(false) // Stop auto-simulation
-            console.log('🔴 Breakpoint hit:', triggered.description)
-            // The UI will detect this and show a notification
+            updateSimulationSet(false)
+            console.log('Breakpoint hit:', hit.description)
         }
     }
 }
 
 export function resetNodeHighlights(scope) {
-    for (const node of scope.allNodes) node.highlighted = false;
+    for (const node of scope.allNodes) node.highlighted = false
 }
 
-/**
- * Step back to previous simulation state
- * @category engine
- */
+// time-travel stepping
 export function stepBack() {
     if (!debugMode) return
-    
-    const prevState = stateHistory.stepBack()
-    if (prevState) {
-        stateHistory.restoreState(globalScope, prevState)
-        updateCanvasSet(true)
-        scheduleUpdate(1, 0) // Force immediate update
-    }
+    const s = stateHistory.stepBack()
+    if (s) { stateHistory.restoreState(globalScope, s); updateCanvasSet(true); scheduleUpdate(1, 0) }
 }
 
-/**
- * Step forward to next simulation state (if available)
- * @category engine
- */
 export function stepForward() {
     if (!debugMode) return
-    
     if (stateHistory.canStepForward()) {
-        const nextState = stateHistory.stepForward()
-        stateHistory.restoreState(globalScope, nextState)
-        updateCanvasSet(true)
-        scheduleUpdate(1, 0)
+        const s = stateHistory.stepForward()
+        stateHistory.restoreState(globalScope, s); updateCanvasSet(true); scheduleUpdate(1, 0)
     } else {
-        // If no future state exists, run one simulation step
         play(globalScope)
     }
 }
 
-/**
- * Jump to a specific state in history
- * @param {number} index - the state index to jump to
- * @category engine
- */
 export function jumpToState(index) {
     if (!debugMode) return
-    
-    const targetState = stateHistory.jumpToState(index)
-    if (targetState) {
-        stateHistory.restoreState(globalScope, targetState)
-        updateCanvasSet(true)
-        scheduleUpdate(1, 0)
-    }
+    const s = stateHistory.jumpToState(index)
+    if (s) { stateHistory.restoreState(globalScope, s); updateCanvasSet(true); scheduleUpdate(1, 0) }
 }
 
-/**
- * Get state history for UI display
- * @return {Object} state history object
- * @category engine
- */
 export function getStateHistory() {
     return {
         states: stateHistory.getAllStates(),
@@ -690,115 +251,52 @@ export function getStateHistory() {
     }
 }
 
-/**
- * Function to check for any UI update, it is throttled by time
- * @param {number=} count - this is used to force update
- * @param {number=} time - the time throttling parameter
- * @param {function} fn - function to run before updating UI
- * @category engine
- */
+// scheduling and main update loop
 export function scheduleUpdate(count = 0, time = 100, fn = undefined) {
     if (lightMode) time *= 5
     var updateFn = layoutModeGet() ? layoutUpdate : update
-    if (count) {
-        // Force update
-        updateFn()
-        for (let i = 0; i < count; i++) {
-            setTimeout(updateFn, 10 + 50 * i)
-        }
-    }
-    if (willBeUpdated) return // Throttling
+    if (count) { updateFn(); for (let i = 0; i < count; i++) setTimeout(updateFn, 10 + 50 * i) }
+    if (willBeUpdated) return
     willBeUpdatedSet(true)
-    // Call a function before update ..
-    if (fn) {
-        setTimeout(() => {
-            fn()
-            updateFn()
-        }, time)
-    } else setTimeout(updateFn, time)
+    if (fn) setTimeout(() => { fn(); updateFn() }, time)
+    else setTimeout(updateFn, time)
 }
 
-/**
- * fn that calls update on everything else. If any change
- * is there, it resolves the circuit and draws it again.
- * Also updates simulations, selection, minimap, resolves
- * circuit and redraws canvas if required.
- * @param {Scope=} scope - the circuit to be updated
- * @param {boolean=} updateEverything - if true we update the wires, nodes and modules
- * @category engine
- */
 export function update(scope = globalScope, updateEverything = false) {
     willBeUpdatedSet(false)
     if (loading === true || layoutModeGet()) return
-    var updated = false
     simulationArea.hover = undefined
-    // Update wires
+
     if (wireToBeChecked || updateEverything) {
-        if (wireToBeChecked === 2)
-            wireToBeChecked = 0 // this required due to timing issues
+        if (wireToBeChecked === 2) wireToBeChecked = 0
         else wireToBeChecked++
-        // WHY IS THIS REQUIRED ???? we are checking inside wire ALSO
-        // Idea: we can just call length again instead of doing it during loop.
         var prevLength = scope.wires.length
         for (let i = 0; i < scope.wires.length; i++) {
             scope.wires[i].checkConnections()
-            if (scope.wires.length !== prevLength) {
-                prevLength--
-                i--
-            }
+            if (scope.wires.length !== prevLength) { prevLength--; i-- }
         }
         scheduleUpdate()
     }
-    // Update subcircuits
     if (updateSubcircuit || updateEverything) {
-        for (let i = 0; i < scope.SubCircuit.length; i++) {
-            scope.SubCircuit[i].reset()
-        }
+        for (let i = 0; i < scope.SubCircuit.length; i++) scope.SubCircuit[i].reset()
         updateSubcircuitSet(false)
     }
-    // Update UI position
     if (updatePosition || updateEverything) {
-        for (let i = 0; i < updateOrder.length; i++) {
-            for (let j = 0; j < scope[updateOrder[i]].length; j++) {
-                updated |= scope[updateOrder[i]][j].update()
-            }
-        }
+        for (let i = 0; i < updateOrder.length; i++)
+            for (let j = 0; j < scope[updateOrder[i]].length; j++)
+                scope[updateOrder[i]][j].update()
     }
-    // Updates multiple objectselections and panes window
-    if (updatePosition || updateEverything) {
-        updateSelectionsAndPane(scope)
+    if (updatePosition || updateEverything) updateSelectionsAndPane(scope)
+    if (!embed && simulationArea.mouseDown && simulationArea.lastSelected && simulationArea.lastSelected !== globalScope.root) {
+        if (!lightMode) $('#miniMap').fadeOut('fast')
     }
-    // Update MiniMap
-    if (
-        !embed &&
-        simulationArea.mouseDown &&
-        simulationArea.lastSelected &&
-        simulationArea.lastSelected !== globalScope.root
-    ) {
-        if (!lightMode) {
-            $('#miniMap').fadeOut('fast')
-        }
-    }
-    // Run simulation
-    if (updateSimulation) {
-        play()
-    }
-    // Show properties of selected element
+    if (updateSimulation) play()
     if (!embed && prevPropertyObjGet() !== simulationArea.lastSelected) {
-        if (
-            simulationArea.lastSelected &&
-            simulationArea.lastSelected.objectType !== 'Wire'
-        ) {
-            // ideas: why show properties of project in Nodes but not wires?
+        if (simulationArea.lastSelected && simulationArea.lastSelected.objectType !== 'Wire') {
             showProperties(simulationArea.lastSelected)
-        } else {
-            // hideProperties();
         }
     }
-    // Draw, render everything
-    if (updateCanvas) {
-        renderCanvas(scope)
-    }
+    if (updateCanvas) renderCanvas(scope)
     updateSimulationSet(false)
     updateCanvas = false
     updatePositionSet(false)

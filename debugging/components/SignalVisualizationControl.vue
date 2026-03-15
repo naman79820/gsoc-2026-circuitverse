@@ -1,261 +1,84 @@
 <template>
-  <div v-if="isDebugMode && !embed" class="signal-viz-control">
-    <div class="control-header">
-      <span class="control-title">⚡ Signal Flow</span>
-      <label class="toggle-switch">
-        <input 
-          type="checkbox" 
-          v-model="isEnabled"
-          @change="toggleVisualization"
-        />
-        <span class="slider"></span>
-      </label>
-    </div>
-
-    <div v-if="isEnabled" class="control-body">
-      <div class="speed-control">
-        <label>Animation Speed:</label>
-        <input 
-          type="range" 
-          min="50" 
-          max="1000" 
-          step="50"
-          v-model="animationSpeed"
-          @input="updateSpeed"
-        />
-        <span class="speed-value">{{ animationSpeed }}ms</span>
-      </div>
-
-      <div class="status-indicator">
-        <div 
-          class="pulse-dot" 
-          :class="{ active: activeSignals > 0 }"
-        ></div>
-        <span>{{ activeSignals }} active signals</span>
-      </div>
+  <div v-if="isDebugMode && !embed" class="sig-ctrl">
+    <label>
+      Signal Flow
+      <input type="checkbox" v-model="on" @change="toggle" />
+    </label>
+    <div v-if="on" class="speed-row">
+      <input type="range" min="50" max="1000" step="50" v-model="speed" @input="updateSpeed" />
+      <span>{{ speed }}ms</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
-let debugModeGet: () => boolean
-let enableSignalVisualization: (speed: number) => void
-let disableSignalVisualization: () => void
-let getSignalVisualizer: () => any
+let debugModeGet: any, enableSigViz: any, disableSigViz: any
 
-const loadEngineFunctions = async () => {
+const loadFns = async () => {
   try {
-    const engine = await import('../simulator/src/engine')
-    debugModeGet = engine.debugModeGet
-    enableSignalVisualization = engine.enableSignalVisualization
-    disableSignalVisualization = engine.disableSignalVisualization
-    getSignalVisualizer = engine.getSignalVisualizer
-  } catch (error) {
-    console.error('Failed to load engine functions:', error)
-  }
+    const e = await import('../simulator/src/engine')
+    debugModeGet = e.debugModeGet; enableSigViz = e.enableSignalVisualization; disableSigViz = e.disableSignalVisualization
+  } catch (_) {}
 }
 
 const isDebugMode = ref(false)
-const isEnabled = ref(false)
-const animationSpeed = ref(300)
-const activeSignals = ref(0)
-
+const on = ref(false)
+const speed = ref(300)
 // @ts-ignore
 const embed = typeof window !== 'undefined' ? window.embed || false : false
 
-function toggleVisualization() {
-  if (isEnabled.value && enableSignalVisualization) {
-    enableSignalVisualization(animationSpeed.value)
-  } else if (disableSignalVisualization) {
-    disableSignalVisualization()
-  }
+function toggle() {
+  on.value && enableSigViz ? enableSigViz(speed.value) : disableSigViz?.()
 }
 
 function updateSpeed() {
-  if (isEnabled.value && enableSignalVisualization) {
-    disableSignalVisualization()
-    enableSignalVisualization(animationSpeed.value)
-  }
+  if (on.value && enableSigViz) { disableSigViz?.(); enableSigViz(speed.value) }
 }
 
-function updateStatus() {
-  if (debugModeGet) {
-    isDebugMode.value = debugModeGet()
-  }
-
-  if (isEnabled.value && getSignalVisualizer) {
-    const visualizer = getSignalVisualizer()
-    activeSignals.value = visualizer.getActiveSignalsCount()
-  }
-}
-
-let updateInterval: NodeJS.Timeout | null = null
-
+let timer: any = null
 onMounted(async () => {
-  await loadEngineFunctions()
-  updateInterval = setInterval(updateStatus, 100)
+  await loadFns()
+  timer = setInterval(() => { if (debugModeGet) isDebugMode.value = debugModeGet() }, 100)
 })
-
-onUnmounted(() => {
-  if (updateInterval) {
-    clearInterval(updateInterval)
-  }
-  if (disableSignalVisualization) {
-    disableSignalVisualization()
-  }
-})
+onUnmounted(() => { if (timer) clearInterval(timer); disableSigViz?.() })
 </script>
 
 <style scoped>
-.signal-viz-control {
+.sig-ctrl {
   position: fixed;
   right: 40px;
   bottom: 100px;
-  background: white;
-  border: 2px solid #ffc107;
-  border-radius: 8px;
-  padding: 12px 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  min-width: 250px;
+  font-size: 13px;
 }
 
-.control-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.control-title {
-  font-weight: 700;
-  font-size: 14px;
-  color: #f57c00;
-}
-
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.3s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.3s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #ffc107;
-}
-
-input:checked + .slider:before {
-  transform: translateX(26px);
-}
-
-.control-body {
-  padding-top: 12px;
-  border-top: 1px solid #eee;
-}
-
-.speed-control {
-  margin-bottom: 12px;
-}
-
-.speed-control label {
-  display: block;
-  font-size: 12px;
+.sig-ctrl label {
   font-weight: 600;
-  color: #666;
-  margin-bottom: 6px;
-}
-
-.speed-control input[type="range"] {
-  width: 100%;
-  height: 4px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: #ddd;
-  outline: none;
-  border-radius: 2px;
-}
-
-.speed-control input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  background: #ffc107;
-  cursor: pointer;
-  border-radius: 50%;
-}
-
-.speed-value {
-  display: inline-block;
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #f57c00;
-  font-family: monospace;
-}
-
-.status-indicator {
   display: flex;
-  align-items: center;
   gap: 8px;
-  font-size: 12px;
-  color: #666;
+  align-items: center;
 }
 
-.pulse-dot {
-  width: 10px;
-  height: 10px;
-  background: #ccc;
-  border-radius: 50%;
-  transition: all 0.3s;
+.speed-row {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.pulse-dot.active {
-  background: #ffc107;
-  box-shadow: 0 0 10px rgba(255, 193, 7, 0.8);
-  animation: pulse 1s infinite;
+.speed-row input {
+  flex: 1;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 0.8;
-  }
+.speed-row span {
+  font-family: monospace;
+  font-size: 11px;
 }
 </style>

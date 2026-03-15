@@ -1,10 +1,8 @@
 /* eslint-disable import/no-cycle */
 import { simulationArea } from '../src/simulationArea'
 
-/**
- * Manages simulation state history for time-travel debugging
- * @category debug
- */
+// Records snapshots of the circuit state so we can step back/forward
+// through simulation history (time-travel debugging).
 export class StateHistory {
     constructor(maxSize = 1000) {
         this.states = []
@@ -12,11 +10,8 @@ export class StateHistory {
         this.maxSize = maxSize
     }
 
-    /**
-     * Capture current circuit state from global scope
-     * @param {Scope} scope - the circuit scope to capture
-     * @returns {Object} The captured state
-     */
+    // Take a snapshot of the current scope and push it onto the timeline.
+    // If we stepped back earlier, this drops any "future" states (branch).
     captureState(scope) {
         const state = {
             timestamp: Date.now(),
@@ -24,22 +19,18 @@ export class StateHistory {
             clockState: simulationArea.clockState,
             scopeId: scope.id,
             scopeName: scope.name,
-            // Capture all circuit elements
             elements: this.captureElements(scope),
-            // Capture all nodes
             nodes: this.captureNodes(scope),
-            // Capture all wires
             wires: this.captureWires(scope),
         }
 
-        // If we're not at the end, remove future states (branching timeline)
         if (this.currentIndex < this.states.length - 1) {
             this.states = this.states.slice(0, this.currentIndex + 1)
         }
 
         this.states.push(state)
 
-        // Maintain max size (circular buffer)
+        // circular buffer — drop oldest when full
         if (this.states.length > this.maxSize) {
             this.states.shift()
         } else {
@@ -49,19 +40,14 @@ export class StateHistory {
         return state
     }
 
-    /**
-     * Capture all circuit elements (gates, components, etc.)
-     */
     captureElements(scope) {
         const elements = {}
-        
-        // Iterate through all module types
+
         const moduleList = [
             'Input', 'Output', 'AndGate', 'OrGate', 'NotGate', 'XorGate',
             'NandGate', 'NorGate', 'XnorGate', 'Clock', 'Splitter',
             'SubCircuit', 'ConstantVal', 'BitSelector', 'Multiplexer',
             'Demultiplexer', 'TTY', 'Rom', 'Ram', 'Adder',
-            // Add more as needed from your moduleList
         ]
 
         moduleList.forEach(moduleType => {
@@ -71,21 +57,16 @@ export class StateHistory {
                     y: elem.y,
                     direction: elem.direction,
                     objectType: elem.objectType,
-                    // Capture output values
                     output: elem.output ? elem.output.value : undefined,
-                    // Capture input values
                     inp: elem.inp ? elem.inp.map(i => ({
                         value: i.value,
                         bitWidth: i.bitWidth
                     })) : [],
-                    // Capture state for sequential elements
                     state: elem.state,
                     bitWidth: elem.bitWidth,
-                    // For subcircuits
                     subcircuitId: elem.id,
-                    // For special elements
-                    data: elem.data, // ROM/RAM data
-                    enable: elem.enable, // Clock enable
+                    data: elem.data,
+                    enable: elem.enable,
                 }))
             }
         })
@@ -93,12 +74,9 @@ export class StateHistory {
         return elements
     }
 
-    /**
-     * Capture all nodes (connection points)
-     */
     captureNodes(scope) {
         if (!scope.allNodes) return []
-        
+
         return scope.allNodes.map(node => ({
             x: node.x,
             y: node.y,
@@ -109,12 +87,9 @@ export class StateHistory {
         }))
     }
 
-    /**
-     * Capture all wires
-     */
     captureWires(scope) {
         if (!scope.wires) return []
-        
+
         return scope.wires.map(wire => ({
             x1: wire.x1,
             y1: wire.y1,
@@ -125,91 +100,60 @@ export class StateHistory {
         }))
     }
 
-    /**
-     * Restore a previously captured state
-     */
     restoreState(scope, state) {
         if (!state) return
 
-        // Restore clock state
         simulationArea.clockState = state.clockState
-
-        // Restore elements
-        this.restoreElements(scope, state.elements)
-
-        // Restore nodes
-        this.restoreNodes(scope, state.nodes)
-
-        // Note: Wires are derived from nodes, so they update automatically
+        this._restoreElements(scope, state.elements)
+        this._restoreNodes(scope, state.nodes)
+        // wires derive from nodes, so they update on their own
     }
 
-    /**
-     * Restore element states
-     */
-    restoreElements(scope, elementsState) {
+    _restoreElements(scope, elementsState) {
         for (const moduleType in elementsState) {
-            if (scope[moduleType] && Array.isArray(scope[moduleType])) {
-                elementsState[moduleType].forEach((elemState, index) => {
-                    if (scope[moduleType][index]) {
-                        const elem = scope[moduleType][index]
-                        
-                        // Restore output
-                        if (elem.output && elemState.output !== undefined) {
-                            elem.output.value = elemState.output
-                        }
+            if (!scope[moduleType] || !Array.isArray(scope[moduleType])) continue
 
-                        // Restore inputs
-                        if (elem.inp && elemState.inp) {
-                            elemState.inp.forEach((inputState, i) => {
-                                if (elem.inp[i]) {
-                                    elem.inp[i].value = inputState.value
-                                }
-                            })
-                        }
+            elementsState[moduleType].forEach((saved, index) => {
+                const elem = scope[moduleType][index]
+                if (!elem) return
 
-                        // Restore state for sequential elements
-                        if (elemState.state !== undefined) {
-                            elem.state = elemState.state
+                if (elem.output && saved.output !== undefined) {
+                    elem.output.value = saved.output
+                }
+                if (elem.inp && saved.inp) {
+                    saved.inp.forEach((inputState, i) => {
+                        if (elem.inp[i]) {
+                            elem.inp[i].value = inputState.value
                         }
-
-                        // Restore data for ROM/RAM
-                        if (elemState.data !== undefined) {
-                            elem.data = elemState.data
-                        }
-                    }
-                })
-            }
+                    })
+                }
+                if (saved.state !== undefined) elem.state = saved.state
+                if (saved.data !== undefined) elem.data = saved.data
+            })
         }
     }
 
-    /**
-     * Restore node states
-     */
-    restoreNodes(scope, nodesState) {
+    _restoreNodes(scope, nodesState) {
         if (!scope.allNodes || !nodesState) return
 
-        nodesState.forEach((nodeState, index) => {
+        nodesState.forEach((saved, index) => {
             if (scope.allNodes[index]) {
-                scope.allNodes[index].value = nodeState.value
-                scope.allNodes[index].highlighted = nodeState.highlighted
+                scope.allNodes[index].value = saved.value
+                scope.allNodes[index].highlighted = saved.highlighted
             }
         })
     }
 
     stepBack() {
-        if (this.canStepBack()) {
-            this.currentIndex--
-            return this.states[this.currentIndex]
-        }
-        return null
+        if (!this.canStepBack()) return null
+        this.currentIndex--
+        return this.states[this.currentIndex]
     }
 
     stepForward() {
-        if (this.canStepForward()) {
-            this.currentIndex++
-            return this.states[this.currentIndex]
-        }
-        return null
+        if (!this.canStepForward()) return null
+        this.currentIndex++
+        return this.states[this.currentIndex]
     }
 
     canStepBack() {
@@ -242,5 +186,4 @@ export class StateHistory {
     }
 }
 
-// Export singleton instance
 export const stateHistory = new StateHistory()

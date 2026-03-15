@@ -1,7 +1,7 @@
 <template>
   <div v-if="isDebugMode && !embed" class="breakpoint-panel">
     <div class="panel-header">
-      <h3>⚡ Breakpoints</h3>
+      <h3>Breakpoints</h3>
       <button @click="showAddModal = true" class="btn-add">+ Add</button>
     </div>
 
@@ -40,7 +40,7 @@
     <!-- Breakpoint Hit Notification -->
     <div v-if="triggeredBp" class="breakpoint-notification">
       <div class="notification-content">
-        <span class="notification-icon">⚠️</span>
+        <span class="notification-icon">!</span>
         <div class="notification-text">
           <strong>Breakpoint Hit!</strong>
           <p>{{ triggeredBp.description }}</p>
@@ -97,7 +97,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-// Engine functions
 let debugModeGet: () => boolean
 let getAllBreakpoints: () => any[]
 let addBreakpoint: (config: any) => any
@@ -149,8 +148,6 @@ function handleAdd() {
     })
     showAddModal.value = false
     refreshBreakpoints()
-    
-    // Reset form
     newBp.value = {
       wireId: 0,
       condition: 'equals',
