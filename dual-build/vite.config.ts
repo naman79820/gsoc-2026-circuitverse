@@ -39,16 +39,16 @@ export default defineConfig(() => {
       outDir: `./dist/simulatorvue/${version}/`,
       assetsDir: "assets",
       chunkSizeWarningLimit: 1600,
-      // REPLACE WITH:
+      
 rollupOptions: {
   input: {
-    // Full simulator (auth, save, collaboration, all features)
+    
     main: fileURLToPath(new URL(`./${version}/index.html`, import.meta.url)),
-    // Embed-only bundle (canvas + simulation only, no auth)
+   
     embed: fileURLToPath(new URL(`./index-embed.html`, import.meta.url)),
   },
   output: {
-    // simulator-v0.js for main, simulator-embed-v0.js for embed
+    
     entryFileNames: (chunkInfo) => {
       if (chunkInfo.name === 'embed') return `simulator-embed-${version}.js`;
       return `simulator-${version}.js`;
